@@ -1,0 +1,45 @@
+---
+title: "EDA Electorate & Vaccination"
+author: "Rebecca Linigen"
+date: "20 September 2018"
+output: html_document
+---
+
+## Summary
+
+This R Markdown will summarise the process of transforming the merged dataset **Immunization_with_everything** in order to undertake EDA to answer the research question: Is there a relationship between election results and childhood vaccination rates.
+
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r, eval==FALSE}
+View(Immunization_with_everything)
+```
+
+#### Data Transformation
+
+Before proceeding with any EDA, rules need to be established and applied regarding the percentage of postcodes in each electorate. The % postcode in each electorate ranges from 0.1 - 100. In this analysis I have chosen to exclude any postcodes that are less than 51% in an electorate. I do this by filtering the data:
+
+```{r}
+Postcode_majority <- Immunization_with_everything %>% select(PartyAb2016, PartyAb2010, PartyAb2013, pc_immun, pc_immun_class, Electoral.division, Per.cent.postcode.in.electorate) %>% filter(Per.cent.postcode.in.electorate >= 51)
+glimpse(Postcode_majority)
+```
+
+I then chose to create objects for each of the four main political parties in Australia: Australia Labor Party (ALP), Liberal Party (LP), National Party and The Greens (GRN), if the outcome of the 2010, 2013 and 2016 federal elections, were the same party result each time. I have called these Party Strongholds. 
+
+```{r}
+LP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "LP", PartyAb2013 == "LP", PartyAb2010 == "LP")
+ALP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "ALP", PartyAb2013 == "ALP", PartyAb2010 == "ALP")
+GRN_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "GRN", PartyAb2013 == "GRN", PartyAb2010 == "GRN")
+NP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "NP", PartyAb2013 == "NP", PartyAb2010 == "NP")
+
+glimpse(NP_stronghold)
+```
+
+Printing the results of these strongholds, shows far more results than we would expect, for example, 11,756 observations in object **LP_stronghold**, reviewing the data shows that this is due to multiple years of immunisation data in the file. I will apply a filter for the year 2016 (which relates to the immunization rate by postcode in 2016). 
+
+
+

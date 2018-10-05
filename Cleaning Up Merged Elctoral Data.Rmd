@@ -1,0 +1,123 @@
+---
+title: "Cleaning Up  & reshaping merged electoral data into 'Long' format"
+author: "Rebecca Linigen"
+date: "23 September 2018"
+output: html_document
+---
+
+#### I start by removing some un-needed columns in the data before trying to reshape the file
+
+```{r, error=TRUE}
+elec_result_PC_all <- select(elec_result_PC_all, -startsWith("DivisionID"))
+```
+
+#### I realised I hadn't reloaded the tidyverse library since my computer battery died
+
+```{r, echo = TRUE, results='hide', warning=FALSE, error=FALSE, message=FALSE}
+library(tidyverse)
+library(tidyselect)
+library(tidyr)
+library(dplyr)
+```
+
+```{r, echo=TRUE, results='hide', warning=FALSE, error=FALSE, message=FALSE}
+elec_result_PC_all <- read_csv("/Users/Bec/R Projects/AT2/cleaned_data/elec_results_PC_all.csv")
+```
+
+```{r, error= TRUE}
+glimpse(elec_result_PC_all)
+```
+
+```{r, error=TRUE}
+elec_result_PC_all <- select_(elec_result_PC_all, -startsWith("DivisionID"))
+```
+
+#### ok let's try that again, I'm going to test this on 'DivisionID' - it looks like `starts_with` needed the underscore
+
+```{r,error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("DivisionID"))
+```
+
+#### Thats worked, ok now for more columns
+
+```{r,error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("DivisionID", "Surname", "GivenNm", "PartyAB", "CandidateID"))
+```
+
+#### ok it looks like I can't do multiple at once this way, I'm going to try `one-of` instead.
+
+```{r, error=TRUE, warning=FALSE} 
+elec_result_PC_all <- select(elec_result_PC_all, -one_of(c("DivisionID", "CandidateID")))
+```
+
+#### That worked, but seems a bit tedious naming every single column seperately, there must be a better way, back to `starts_with`, at least that can remove column 'groups' with the same start. 
+
+```{r, error =TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("DivisionID", "Surname", "GivenNm", "PartyAb", "CandidateId"))
+```
+
+#### No luck, how about `contains`
+
+```{r, error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -contains("DivisionID", "Surname", "GivenNm", "PartyAb", "CandidateId"))
+```
+
+#### Back to `starts_with` but why does this only seem to work one by one (?), this will take a while
+
+```{r,error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("Surname"))
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("GivenNm"))
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("PartyAb"))
+```
+
+#### How about a few at once
+
+```{r,error =TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("Surname", "GivenNm"))
+```
+#### Didn't like that. The last column to clean up is state, but I want to leave one of them behind, the other 2 can go (we don't need 3 state columns by year seeing as they don't change each election)
+
+```{r, error=TRUE, eval=FALSE} 
+rename(elec_result_PC_all, "State" = "StateAb.x")
+```
+
+####This looks promising, let's take a look
+
+```{r, error=TRUE} 
+head(elec_result_PC_all)
+```
+#### Now to remove those extra state by year columns.
+
+```{r, error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -matches("StateAb.y"))
+elec_result_PC_all <- select(elec_result_PC_all, -matches("StateAb"))
+```
+
+#### And the final piece which is the CandidateID columns
+```{r, error=TRUE} 
+elec_result_PC_all <- select(elec_result_PC_all, -starts_with("CandidateID"))
+```
+
+#### Now that I have a cleaner data file in `wide` format, I'd like to convert it to `long` format. Before I do this, I ned to make sure the postcode column is a factor.
+```{r, error=TRUE, eval = FALSE} 
+elec_result_PC_all$Postcode <- factor(elec_result_PC_all$Postcode)
+```
+#### I found [this Cookbook for R article](http://www.cookbook-r.com/Manipulating_data/Converting_data_between_wide_and_long_format/) really helpful in showing me how to reshape data using the `gather` function. 
+
+#### Now use the `gather` function to combine 'PartyNm2016', 'PartyNm2013', and PartyNm2010' into the column 'Party_Year'
+```{r, error=TRUE, eval=FALSE}
+elec_result_PC_all_long <- gather(elec_result_PC_all, Party_Year, Party_Name, PartyNm2016:PartyNm2013, factor_key = TRUE)
+```
+
+```{r, error=TRUE, eval=FALSE, warning =FALSE}
+head(elec_result_PC_all_long)
+```
+
+#### Rename factor names from "PartyNm2016", "PartyNm2010" and "PartyNm2013" to "2016", "2010" and "2013"
+```{r, error=TRUE, eval =FALSE} 
+levels(elec_result_PC_all_long$Party_Year)[levels(elec_result_PC_all_long$Party_Year)=="PartyNm2016"] <- "2016"
+levels(elec_result_PC_all_long$Party_Year)[levels(elec_result_PC_all_long$Party_Year)=="PartyNm2013"] <- "2013"
+levels(elec_result_PC_all_long$Party_Year)[levels(elec_result_PC_all_long$Party_Year)=="PartyNm2010"] <- "2010"
+```
+
+## Done - ready for merging with the other datasets in `long` format & with unecessary columns removed. 

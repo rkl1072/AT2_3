@@ -1,0 +1,114 @@
+---
+title: "Merging Australian postcodes and Federal election results"
+author: "Rebecca Linigen"
+date: "31 August 2018"
+output: word_document
+---
+
+###Summary
+In order to explore research question 3 'Does political preference have an impact on childhood immunisation coverage rates?'. Two datasets [Postcodes by Electoral Division - Australia Parliament House](https://www.aph.gov.au/About_Parliament/Parliamentary_Departments/Parliamentary_Library/pubs/rp/rp0304/04rp11table2) & [2016 Federal Election results by electorate - Australian Electoral Commission](https://results.aec.gov.au/20499/Website/HouseDownloadsMenu-20499-Csv.htm) need to be merged to create a singular datset with the key joining variable of __Postcode__, in order to merged with immunisation and demographic data that exists at a postcode level, and therefore conduct EDA to test the hypothesis that a relationship may exist between political preference and likelihood to immunise children.
+
+###Importing Dataset 1 - Australian Parliament House - Postcodes by Electoral Division
+
+Load the `tidyverse` and `readxl` libraries;
+
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+Import the Data file using `read_excel`
+
+```{r}
+APH_post_elec <- read_excel("Postcode by Electorate all AUS - fixed.xlsx")
+
+glimpse(APH_post_elec)
+```
+
+Using `glimpse` above, I can see that the number formats are readable,there are no characters surrounding the numbers, no leading zeroes have been dropped, and therefore no parsing is required at this stage. 
+
+Inspecting the contents of each dataset, it becomes clear that the electorate is the single variable that can be used to connect the two datasets, as shown below. 
+
+```{r pressure, echo=FALSE, fig.cap="Fig.1. Relationship between variables in two Datasets", out.width = '60%'}
+knitr::include_graphics("Data relationship - Electorate.png")
+```
+
+###Importing Dataset 2 - Australian Electoral Commission - 2016 Federal Election results by electorate
+
+
+```{r, warning=FALSE}
+AEC_2016_fed <- read_csv("HouseMembersElectedDownload-20499.csv")
+```
+
+This produced a number of `parsing` and `rbind` warnings, let's `glimpse` the data to see if we can figure out what's going on. 
+
+```{r}
+glimpse(AEC_2016_fed)
+```
+
+The above output alerts us to the fact that the Header column in the csv is a character description of the data. We need to remove this using `skip`.
+
+```{r}
+AEC_2016_fed <- read.csv(file = "HouseMembersElectedDownload-20499.csv", skip = 1, head = TRUE)
+
+glimpse(AEC_2016_fed)
+```
+
+Now to merge the two datasets together. We know from using View on the data, that Electorate (_'Electoral division'_ in **APH_post_elec** and _'DivisionNm'_ in **AEC_2016_fed**) is our joining variable, but there are multiples observations of Electorate in **APH_post_elec** as there can be multiples postcodes in each electorate, let's use `count` to confirm that;
+
+```{r}
+APH_post_elec %>% count(`Electoral division`) %>% filter(n>1)
+```
+
+```{r}
+AEC_2016_fed %>% count(DivisionNm) %>% filter(n>1)
+```
+I suspect that each observation in **AEC_2016_fed** dataset is unique, therefore no results are returned. Let's try changing `n>1` to `N==1` and see what happens;
+
+```{r}
+AEC_2016_fed %>% count(DivisionNm) %>% filter(n==1)
+```
+
+Now that we have the two datasets tidy, and we've sense checked the counts on the joining variable, we can combine the datasets using with a Mutating join using `leftjoin`. 
+
+```{r, error = TRUE}
+elec_result_PC <- APH_post_elec %>% left_join(AEC_2016_fed, by = "DivisionNm")
+```
+
+This error was caused by a mismatch in column names. In order to join variables with different names, we need to apply a named vector in the format `c("a" = "b")` as follows;
+
+```{r, warning=FALSE}
+elec_result_PC <- APH_post_elec %>% left_join(AEC_2016_fed, by = c("Electoral division" = "DivisionNm"))
+
+glimpse(elec_result_PC)
+```
+
+This combined dataset **elec_results_PC** is now ready to be merged with the immunisation dataset and demographic dataset - postcode has been identiifed as the joining variable across files. 
+
+After reviewing the other data files & discussing the regression model we plan on using, it was determined that we need to train the model on data from previous years. To this end, we decided to review data from the 2010 and 2013 federal elections, in addition to the 2016 federal elections results already merged above in **elec_results_PC**. 
+
+Repeat steps above to import the 2010 and 2013 election reuslt datasets. 
+
+Rename all headers so the different years are identifiable within the file (as all files are from the AEC, the filename conventions are the same in each file, therefore they need to be renamed to identify each years results within the merged file. I have shown one example below using the **AEC_2010_fed dataset**.
+
+```{r, eval = FALSE}
+colnames(AEC_2010_fed)[colnames(AEC_2010_fed)=="DivisionNm"] <- "DivisionNm2010"
+```
+
+After renaming all column headers to the desired names, I merge the existing dataset **elec_results_PC**, with the **AEC_2010_fed** datafile we just imported, usiing _"Electoral Division"_ as the joining variable. 
+
+```{r, eval = FALSE}
+elec_result_PC_2016_2010 <- elec_result_PC %>% left_join(AEC_2010_fed, by = c("Electoral division" = "DivisionNm2010"))
+
+View(elec_result_PC_2016_2010)
+```
+
+I then repeat the same steps to join **AEC_2013_fed** to the merged 2010, 2016 and postcode level data saving as object **elect_reult_PC_all**.
+
+```{r, eval=FALSE}
+elec_result_PC_all <- elec_result_PC_2016_2010 %>% left_join(AEC_2013_fed, by = c("Electoral division" = "DivisionNm2013"))
+
+View(elec_result_PC_all)
+```
+
+This election result by postcode data is now ready to be merged to the PHN and demographic datasets using _Postcode_ as the joiining variable.
