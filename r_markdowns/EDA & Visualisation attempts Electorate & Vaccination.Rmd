@@ -1,0 +1,221 @@
+---
+title: "EDA & Visualisation attempts Electorate & Vaccination"
+author: "Rebecca Linigen"
+date: "20 September 2018"
+output: html_document
+---
+
+## Summary
+
+This R Markdown will summarise the process of transforming the merged dataset **Immunization_with_everything** in order to undertake EDA to answer the research question: Is there a relationship between election results and childhood vaccination rates. It also covers the MANY attempts I undertook to visualise the data - none with any success, yet.
+
+```{r, message=FALSE}
+library(tidyverse)
+```
+
+```{r, eval==FALSE, error=TRUE, message=FALSE, eval =FALSE}
+View(Immunization_with_everything)
+```
+
+#### Data Transformation
+
+Before proceeding with any EDA, rules need to be established and applied regarding the percentage of postcodes in each electorate. The % postcode in each electorate ranges from 0.1 - 100. In this analysis I have chosen to exclude any postcodes that are less than 51% in an electorate. I do this by filtering the data:
+
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+Postcode_majority <- Immunization_with_everything %>% select(PartyAb2016, PartyAb2010, PartyAb2013, pc_immun, pc_immun_class, Electoral.division, Per.cent.postcode.in.electorate) %>% filter(Per.cent.postcode.in.electorate >= 51)
+glimpse(Postcode_majority)
+```
+
+I then chose to create objects for each of the four main political parties in Australia: Australia Labor Party (ALP), Liberal Party (LP), National Party and The Greens (GRN), if the outcome of the 2010, 2013 and 2016 federal elections, were the same party result each time. I have called these Party Strongholds. 
+
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+LP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "LP", PartyAb2013 == "LP", PartyAb2010 == "LP")
+ALP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "ALP", PartyAb2013 == "ALP", PartyAb2010 == "ALP")
+GRN_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "GRN", PartyAb2013 == "GRN", PartyAb2010 == "GRN")
+NP_stronghold <- Postcode_majority %>% filter(PartyAb2016 == "NP", PartyAb2013 == "NP", PartyAb2010 == "NP")
+
+glimpse(NP_stronghold)
+```
+
+Printing the results of these strongholds, shows far more results than we would expect, for example, 11,756 observations in object **LP_stronghold**, reviewing the data shows that this is due to multiple years of immunisation data in the file. I will apply a filter for the year 2016 (which relates to the immunization rate by postcode in 2016). 
+
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+Postcode_majority_2016 <- Postcode_majority %>% filter(year == 2016, Time == 2016)
+```
+
+Joining Immunisation data and electorate data in new clean file
+
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+immunisation_data <- read_csv("cleaned_data/immunisation_data.csv")
+electorate_immunisation_join <- elec_result_PC %>% left_join(immunisation_data, by = c("Postcode" = "postcode"))
+```
+
+once again I filter by the year 2016 (which relates to the immunization rate by postcode in 2016). 
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+electorate_immunisation_join_2016 <- electorate_immunisation_join %>% filter(year == 2016)
+```
+
+Then I decided to also filter to 1 year olds only (removing 2 and 5 year olds)
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+elec_imm_2016_1yo <- electorate_immunisation_join %>% filter(year == 2016, age == 1)
+```
+
+Then to apply the postcode majority again
+```{r, error=TRUE, message=FALSE, eval =FALSE}
+elec_imm_2016_majority <- electorate_immunisation_join_2016 %>% filter(`Per cent` >= 51)
+```
+
+#### Data Visualisation attempts :  Electoral & Immunisation data
+In order to get a sense of any relationships in the data, particularly between % immunisation  and elected party in each postcode, I am going to attempt to visualise the data in various ways.
+```{r, eval=FALSE, error=TRUE, message=FALSE, eval =FALSE}
+ggplot(elec_imm_2016_majority, mapping = aes(x = PartyAb, y = pc_immun, color = age, size = `Per cent``)) + geom_point())
+ggplot(elec_imm_2016_majority, aes(x = PartyAb, y = pc_immun, color = age, size = `Per cent`)) + geom_point()
+ggplot(elec_imm_2016_majority, aes(x = age, y = pc_immun, color = PartyAb, size = `Per cent`)) + geom_point()
+```
+
+Trying `group_by`
+```{r, error=TRUE, eval =FALSE}
+by_party_viz <-elec_imm_2016_majority %>% group_by(`Electoral division`, PartyAb)
+```
+
+Re-merging the immunisation data and election data as I wasn't confident the groups merged data was duplicate free & there were a lot of uneccesary columns & variables for these purposes.
+```{rerror=TRUE, eval =FALSE}
+electorate_immunisation_join <- elec_result_PC_all %>% left_join(immunisation_data, by = c("Postcode" = "postcode"))
+```
+
+Trying to identify & pull out party stronghold areas in new data
+```{r, error=TRUE, eval =FALSE}
+Postcode_majority %>% filter(PartyAb2016 == "ALP", PartyAb2013 == "ALP", PartyAb2010 == "ALP") %>% filter(PartyAb2016 == "GRN", PartyAb2013 == "GRN", PartyAb2010 == "GRN") %>% filter(PartyAb2016 == "NP", PartyAb2013 == "NP", PartyAb2010 == "NP") %>% ggplot(Postcode_majority, mapping = aes(x = pc_immun, y = year)) + geom_point()
+```
+
+As this didn't work I tried to simplify to one party, ALP. Looking at Year by % Immunisation
+```{r, error=TRUE, eval =FALSE}
+Postcode_majority %>% filter(PartyAb2016 == "ALP", PartyAb2013 == "ALP", PartyAb2010 == "ALP") %>% ggplot(Postcode_majority, mapping = aes(x = year, y = pc_immun)) + geom_point()
+```
+
+Looking at year and Party type
+```{r, error=TRUE, eval =FALSE}
+Postcode_majority %>% filter(PartyAb2016 == "ALP", PartyAb2013 == "ALP", PartyAb2010 == "ALP") %>% ggplot(Postcode_majority, mapping = aes(x = year, y = PartyAb2016)) + geom_point()
+```
+
+Trying to simplify the identification of party stronghold areas into one object
+```{r, error=TRUE, eval =FALSE}
+Party_strongholds <- c("LP_stronghold", "ALP_stronghold", "GRN_stronghold", "NP_stronghold")
+ggplot(Postcode_majority, mapping = aes(x = "Party_strongholds", y = pc_immun)) + geom_smooth()
+```
+
+Trying again by *Electoral division* and the *Party_strongholds* object
+```{r, error=TRUE, eval =FALSE}
+ggplot(Postcode_majority, mapping = aes(x = Electoral.division, y = pc_immun_class)) + geom_smooth()
+
+ggplot(Postcode_majority, mapping = aes(x = Party_strongholds, y = pc_immun_class)) + geom_smooth()
+```
+
+I went off and did some reading and attemted to use data frames instead as I was having no luck with the above approach.
+```{r, error=TRUE, eval =FALSE}
+political_party_df=ggplot(data=d2_dash, aes(d2_dash$`Percent fully immunised (%)`)) + geom_histogram(stat='count') + theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1)) + facet_grid(d2_dash$variable~d2_dash$value)+  labs(y="Count",x="Percent immunized",title="Party elected in 2016 and vaccination")
+```
+
+Trying to filter down further so I am looking at less data, and hopefully less 'noise'
+```{r, error=TRUE, eval =FALSE}
+elec_imm_1yo_51 <- electorate_immunisation_join %>% filter(age == 1) %>% filter(`Per cent` >= 51)
+View(elec_imm_1yo_51)
+```
+
+Trying to get counts as I kept getting an empty axis generated
+```{r, error=TRUE, eval =FALSE}
+political_party_df=ggplot(data=elec_imm_1yo_51, aes(elec_imm_1yo_51$`pc_immun`) + geom_histogram(stat='count') + theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1)) + facet_grid(elec_imm_1yo_51$variable~elec_imm_1yo_51$value)+ labs(y="Count",x= "pc_immun"",title="Vaccination rate of 1 y/olds by political party")
+```
+
+Trying to do a Scatter plot comparing gdpPercap and lifeExp, with color representing continent and size representing population, faceted by year
+```{r, error=TRUE, eval =FALSE}
+ggplot (gapminder, aes(x = gdpPercap, y = lifeExp, color = continent, size = pop)) + geom_point () +scale_x_log10 () +facet_wrap (~year)
+```
+
+Trying a histogram instead
+```{r, error=TRUE, eval =FALSE}
+ggplot(data = Lib_stronghold, aes(x = year, y = pc_immun)) + geom_histogram()
+```
+
+Tried all sorts of approaches to visualise the data
+```{r, error=TRUE, eval =FALSE}
+ggplot(data = elec_imm_1yo_51, aes(x = PartyAb2016$count, y = pc_immun)) + facet_wrap(~year)
+
+ggplot(data = elec_imm_1yo_51, aes(x = count(PartyAb2016), y = pc_immun)) + facet_wrap(~year)
+
+ggplot(data = elec_imm_1yo_51, aes(x = count(elec_imm_1yo_51$PartyAb2016), y = pc_immun)) + facet_wrap(~year)
+
+ggplot(data = elec_imm_1yo_51, aes(x = count(elec_imm_1yo_51,PartyAb2016), y = pc_immun)) + facet_wrap(~year)
+
+ggplot(data = elec_imm_1yo_51, aes(y = pc_immun)) + geom_bar(mapping = NULL, data = NULL, stat = count("PartyAb2016")) + facet_wrap(~year)
+
+gplot(data = elec_imm_1yo_51, aes(, x = year, y = pc_immun)) + geom_bar(mapping = NULL, data = NULL, stat = "count") + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(, x = year, y = pc_immun)) + geom_bar(mapping = NULL, data = NULL, stat = "count") + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_bar(mapping = NULL, data = NULL, stat = "count") + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_bar() + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_point() + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_histogram() + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_histogram(stat = "count") + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun)) + geom_col() + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun_class)) + geom_col() + facet_wrap(~PartyAb2016)
+
+ggplot(data = elec_imm_1yo_51, aes(x = year, y = pc_immun_class)) + geom_col() + facet_wrap(~PartyAb2016) %>% filter(PartyAb2016 == "ALP", PartyAb2016 == "LP)
+```
+
+Tried to cut it down to 2 main parties for comparison
+```{r, error=TRUE, eval =FALSE}
+elec_imm_1yo_51_2P <- elec_imm_1yo_51 %>% filter(PartyAb2016 == "ALP", PartyAb2016 == "LP")
+```
+
+Testing if that worked
+```{r, error=TRUE, eval =FALSE}
+ggplot(data = elec_imm_1yo_51_2P, aes(x = year, y = pc_immun)) + geom_col() + facet_wrap(~PartyAb2016)
+```
+
+Testing `unique` function to try and remove dupes
+```{r, error=TRUE, eval =FALSE}
+elec_imm_1yo_51_2 = unique(elec_imm_1yo_51[,c('Postcode', 'PartyAb2016', 'PartyAb2013','PartyAb2010', 'pc_immun', 'year')])
+```
+
+Trying geom_histogram and dataframe approach
+```{r, error=TRUE, eval =FALSE}
+political_party_df = ggplot(data=elec_imm_1yo_51, aes(elec_imm_1yo_51$`pc_immun`)) + geom_histogram(stat='count')+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))+facet_wrap(elec_imm_1yo_51$PartyNm2016~elec_imm_1yo_51$year)+  labs(y="Count",x="Percent immunized",title="Party elected in 2016 and vaccination")
+```
+
+Trying geom_bar and dataframe approach
+```{r, error=TRUE, eval =FALSE}
+political_party_df_2 = ggplot(elec_imm_1yo_51, aes(x = `pc_immun`)) + geom_bar(aes(y=(..count..)/sum(..count..))) + scale_y_continuous(labels = scales::percent())+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))+facet_wrap(~elec_imm_1yo_51$PartyNm2016~elec_imm_1yo_51)+  labs(y="Count",x="Percent immunized",title="Party elected in 2016 and vaccination")
+```
+
+Attempt 2
+```{r, error=TRUE, eval =FALSE}
+political_party_df_3 = ggplot(data=elec_imm_1yo_51, aes(elec_imm_1yo_51$`pc_immun`)) + %>% filter(year == 2010, year == 2013, year == 2016) + geom_histogram(stat='count')+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))+facet_wrap(elec_imm_1yo_51$PartyNm2016~.)+  labs(y="Count",x="Percent immunized",title="Party elected in 2016 and vaccination")
+```
+
+Attempt 3
+```{r, error=TRUE, eval =FALSE}
+political_party_df_3 = ggplot(data=elec_imm_1yo_51, aes(elec_imm_1yo_51$`pc_immun`)) + geom_histogram(stat='count')+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1))+facet_
+```
+
+Attempt 4
+```{r, error=TRUE, eval =FALSE}
+political_party_df_2 <- ggplot(data=elec_imm_1yo_51) + geom_bar(aes(x = elec_imm_1yo_51$`pc_immun`),y=(..count..)/sum(..count..)) + scale_y_continuous(labels = scales::percent())+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1)) + facet_wrap(elec_imm_1yo_51$PartyNm2016~elec_imm_1yo_51$year) + labs(y="% of total",x="Percent immunized",title="Party elected in 2016 and vaccination)
+```
+
+Attempt 5 - I keep getting the following error message: 'Error in number(x = x, accuracy = accuracy, scale = scale, prefix = prefix,: argument "x" is missing, with no default' but no amount of googling is giving me the answer, and I have oultined an argument for x.... Final attempt with X axes added everywhere!
+```{r, error=TRUE, eval =FALSE}
+political_party_df_2 <- ggplot(data=elec_imm_1yo_51) + geom_bar(aes(aes(x = elec_imm_1yo_51$`pc_immun`),y=(..count..)/sum(..count..))) + scale_y_continuous(labels = scales::percent())+ theme(axis.text.x = element_text(size=6,angle = 90, hjust = 1)) + facet_wrap(elec_imm_1yo_51$PartyNm2016~elec_imm_1yo_51$year) + labs(y=“% of total”,x= “Percent immunized”, title= “Party elected in 2016 and vaccination”)
+```
+
+#### I had to give up because of time, but I will keep investigating why this isn't working in AT3. I suspect there is still a mixed format or wide and long, I am going to reshape both files and re-merge and see if that makes it easier to visualise these data.  
+
